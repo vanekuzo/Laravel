@@ -13,7 +13,8 @@ class AuthController extends Controller
         $data = $request->validate([
             'name' => 'required|string',
             'email' => 'required|string|unique:users,email',
-            'password' => 'required|string|confirmed'
+            'password' => 'required|string|confirmed',
+            'role' => 'required|string|in:admin,writer'
         ]);
 
         $user = User::create([
@@ -21,10 +22,11 @@ class AuthController extends Controller
             'email' => $data['email'],
             'password' => bcrypt($data['password']),
         ]);
+        $user->assignRole($data['role']);
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
-        return response(['user' => $user, 'token' => $token], 201);
+        return response(['user' => $user->load('roles', 'permissions'), 'token' => $token], 201);
     }
 
     public function login(Request $request) {
@@ -36,10 +38,10 @@ class AuthController extends Controller
         if (!Auth::attempt($data)) {
             return response(['message' => 'Invalid credentials'], 401);
         }
-
+        $user = auth()->user();
         $token = auth()->user()->createToken('auth_token')->plainTextToken;
 
-        return response(['user' => auth()->user(), 'token' => $token], 200);
+        return response(['user' => $user->load('roles', 'permissions'), 'token' => $token ], 200);
     }
 
     public function logout() {
